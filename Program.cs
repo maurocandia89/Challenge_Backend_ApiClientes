@@ -1,15 +1,19 @@
 using ApiClientes.Data;
 using ApiClientes.Models;
+using ApiClientes.Validation;
 using Microsoft.EntityFrameworkCore;
+
+//manejo automatico del mapeo de fechas
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Configuración de la inyección de dependencias de la DB
+//Configuración de la inyección de dependencias de la DB
 var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 builder.Services.AddDbContext<ClienteContext>(options =>
     options.UseNpgsql(connectionString));
 
-// 2. Configuración de CORS
+//Configuración de CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(
@@ -23,10 +27,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Usar la política de CORS
 app.UseCors();
 
-// Middleware: Aplicar migraciones al iniciar (solo para desarrollo/prototipado simple)
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ClienteContext>();
@@ -34,51 +36,64 @@ using (var scope = app.Services.CreateScope())
 }
 
 
-// 3. Definición de Endpoints (ABM con EF Core)
-
-// GET: /clientes
+// Endpoints (ABM con EF Core)
 app.MapGet("/clientes", async (ClienteContext db) =>
     await db.Clientes.ToListAsync());
 
-// GET: /clientes/{id}
 app.MapGet("/clientes/{id}", async (int id, ClienteContext db) =>
     await db.Clientes.FindAsync(id)
         is Cliente cliente
         ? Results.Ok(cliente)
         : Results.NotFound());
 
-// POST: /clientes
 app.MapPost("/clientes", async (Cliente cliente, ClienteContext db) =>
 {
-    cliente.FechaRegistro = DateTime.Now; // Establecer la fecha de registro
+
+     var validationErrors = ClienteValidator.Validate(cliente);
+    if (validationErrors != null)
+    {
+        return Results.BadRequest(new { Errors = validationErrors });
+    }
+    
+    if (await db.Clientes.AnyAsync(c => c.CUIT == cliente.CUIT))
+    {
+        return Results.Conflict(new { Errors = $"El CUIT {cliente.CUIT} ya está registrado." });
+    }
+
+    cliente.FechaRegistro = DateTime.UtcNow;
     db.Clientes.Add(cliente);
     await db.SaveChangesAsync();
 
     return Results.Created($"/clientes/{cliente.Id}", cliente);
 });
 
-// PUT: /clientes/{id}
+
 app.MapPut("/clientes/{id}", async (int id, Cliente inputCliente, ClienteContext db) =>
 {
-    var cliente = await db.Clientes.FindAsync(id);
-
-    if (cliente is null) return Results.NotFound();
+    var validationErrors = ClienteValidator.Validate(inputCliente);
+    if (validationErrors != null)
+    {
+        return Results.BadRequest(new { Errors = validationErrors });
+    }
     
-    // Actualizar solo los campos permitidos
-    cliente.Nombres = inputCliente.Nombres;
-    cliente.Apellidos = inputCliente.Apellidos;
-    cliente.FechaNacimiento = inputCliente.FechaNacimiento;
-    cliente.CUIT = inputCliente.CUIT;
-    cliente.Domicilio = inputCliente.Domicilio;
-    cliente.TelefonoCelular = inputCliente.TelefonoCelular;
-    cliente.Email = inputCliente.Email;
+    var clienteExistente = await db.Clientes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id);
 
+    if (clienteExistente is null) return Results.NotFound($"Cliente con ID {id} no encontrado para actualizar.");
+    
+    if (await db.Clientes.AnyAsync(c => c.CUIT == inputCliente.CUIT && c.Id != id))
+    {
+        return Results.Conflict(new { Errors = $"El CUIT {inputCliente.CUIT} ya está registrado por otro cliente." });
+    }
+    
+    inputCliente.Id = id; 
+    inputCliente.FechaRegistro = clienteExistente.FechaRegistro;
+    db.Clientes.Update(inputCliente);
     await db.SaveChangesAsync();
 
     return Results.NoContent();
 });
 
-// DELETE: /clientes/{id}
+
 app.MapDelete("/clientes/{id}", async (int id, ClienteContext db) =>
 {
     var cliente = await db.Clientes.FindAsync(id);

@@ -1,0 +1,56 @@
+@baseUrl = http://localhost:5257/clientes
+
+### 1. GET all
+GET {{baseUrl}}
+
+### 2. GET por ID
+GET {{baseUrl}}/1
+
+### 3. SEARCH: Buscar por caracteres
+GET {{baseUrl}}/search/gom
+
+### 4. INSERT (POST): Crear un nuevo cliente
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+    "nombres": "Mauro",
+    "apellidos": "Candia",
+    "fechaNacimiento": "1989-12-30",
+    "cuit": "20-35076673-2",
+    "domicilio": "Calle de Prueba 456",
+    "telefonoCelular": "2612434975",
+    "email": "maurocandia89@gmail.com"
+}
+
+### 5. TEST (POST)
+POST {{baseUrl}}
+Content-Type: application/json
+
+{
+    "nombres": "",
+    "apellidos": "Incompleto",
+    "fechaNacimiento": "2030-01-01", 
+    "cuit": "123",
+    "domicilio": "Domicilio",
+    "telefonoCelular": "",
+    "email": "invalido"
+}
+
+### 6. UPDATE (PUT)
+PUT {{baseUrl}}/1
+Content-Type: application/json
+
+{
+    "id": 2,
+    "nombres": "Evelyn",
+    "apellidos": "Candia",
+    "fechaNacimiento": "1992-11-09",
+    "cuit": "99-9999999-9",
+    "domicilio": "Domicilio Nuevo 101",
+    "telefonoCelular": "2619999999",
+    "email": "evelyncandia@gmail.com"
+}
+
+### 8. DELETE: Eliminar el cliente por ID
+DELETE {{baseUrl}}/2
