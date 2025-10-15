@@ -1,6 +1,6 @@
 @baseUrl = http://localhost:5257/clientes
 
-### 1. GET all
+### 1. GET por listado
 GET {{baseUrl}}
 
 ### 2. GET por ID
@@ -9,7 +9,7 @@ GET {{baseUrl}}/1
 ### 3. SEARCH: Buscar por caracteres
 GET {{baseUrl}}/search/gom
 
-### 4. INSERT (POST): Crear un nuevo cliente
+### 4. POST: Crear un nuevo cliente
 POST {{baseUrl}}
 Content-Type: application/json
 
@@ -23,21 +23,7 @@ Content-Type: application/json
     "email": "maurocandia89@gmail.com"
 }
 
-### 5. TEST (POST)
-POST {{baseUrl}}
-Content-Type: application/json
-
-{
-    "nombres": "",
-    "apellidos": "Incompleto",
-    "fechaNacimiento": "2030-01-01", 
-    "cuit": "123",
-    "domicilio": "Domicilio",
-    "telefonoCelular": "",
-    "email": "invalido"
-}
-
-### 6. UPDATE (PUT)
+### 5. UPDATE (PUT)
 PUT {{baseUrl}}/1
 Content-Type: application/json
 
@@ -52,5 +38,5 @@ Content-Type: application/json
     "email": "evelyncandia@gmail.com"
 }
 
-### 8. DELETE: Eliminar el cliente por ID
+### 6. DELETE
 DELETE {{baseUrl}}/2

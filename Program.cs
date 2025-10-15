@@ -2,18 +2,19 @@ using ApiClientes.Data;
 using ApiClientes.Models;
 using ApiClientes.Validation;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Mvc;
 
-//manejo automatico del mapeo de fechas
+//manejo automatico del mapeo de fechas en sql
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
 
-//Configuración de la inyección de dependencias de la DB
+//Config de inyección de dependencias de la DB
 var connectionString = builder.Configuration.GetConnectionString("PostgresConnection");
 builder.Services.AddDbContext<ClienteContext>(options =>
     options.UseNpgsql(connectionString));
 
-//Configuración de CORS
+//Config de CORS
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(
@@ -36,7 +37,7 @@ using (var scope = app.Services.CreateScope())
 }
 
 
-// Endpoints (ABM con EF Core)
+// Endpoints
 app.MapGet("/clientes", async (ClienteContext db) =>
     await db.Clientes.ToListAsync());
 
@@ -45,6 +46,23 @@ app.MapGet("/clientes/{id}", async (int id, ClienteContext db) =>
         is Cliente cliente
         ? Results.Ok(cliente)
         : Results.NotFound());
+
+app.MapGet("/clientes/search", async ([FromQuery] string? query, ClienteContext db) =>
+{
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        return Results.Ok(await db.Clientes.ToListAsync());
+    }
+
+    var clientes = await db.Clientes
+        .Where(c => 
+            c.Nombres.ToLower().Contains(query.ToLower()) || 
+            c.Apellidos.ToLower().Contains(query.ToLower()))
+        .ToListAsync();
+
+    return Results.Ok(clientes);
+});
+
 
 app.MapPost("/clientes", async (Cliente cliente, ClienteContext db) =>
 {
